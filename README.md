@@ -151,41 +151,6 @@ print(resp.choices[0].message.content)
 
 新建一个 OpenAI 类型的提供商,Base URL 填 `http://127.0.0.1:8000/v1`,API Key 随意,模型手动添加上表 id 即可。
 
-## Docker 部署与保活
-
-VPS 上推荐用 Docker,自带 `restart: unless-stopped` 实现开机自启 + 崩溃自动重启。
-
-**前置**:当前用户需有 docker 权限。要么命令前加 `sudo`,要么把用户加入 docker 组(免 sudo):
-
-```bash
-sudo usermod -aG docker $USER && newgrp docker   # 之后重新登录生效
-```
-
-1. 准备好填了凭证的 `.env`(放在项目根目录)。compose 会把它**只读挂载**进容器,由容器内 `python-dotenv` 读取。
-   - 不用 compose 的 `env_file`——它会把 Cookie 里的 `$xxx`(如 GA cookie `...$o6$g1...`)当变量展开而破坏 Cookie;挂载方式不受影响。
-   - 对外访问无需改 `.env` 的 `HOST`——compose 已强制容器内监听 `0.0.0.0`;
-   - 务必设置 `PROXY_API_KEY` 做鉴权。
-   - 宿主机端口在 `docker-compose.yml` 的 `ports` 左侧改(默认 `8000`)。
-
-2. 一键启动:
-
-   ```bash
-   sudo docker compose up -d --build
-   ```
-
-3. 常用运维:
-
-   ```bash
-   sudo docker compose logs -f       # 实时日志
-   sudo docker compose restart       # 改了 .env 后重启生效
-   sudo docker compose down          # 停止并移除容器
-   sudo docker compose ps            # 状态
-   ```
-
-**保活机制**:compose 里设了 `restart: unless-stopped`,容器崩溃或宿主机重启都会自动拉起(除非你手动 `down`/`stop`);并带 healthcheck 探活 `/health`。
-
-> 凭证失效仍需手动换 `.env` 后 `docker compose restart`。
-
 ## 凭证失效与更换
 
 `Token` 绑定会员账号且**有状态**:重新登录沉浸式翻译后旧 Token 会失效,需重新抓包替换 `.env` 里的 `IMMERSIVE_TOKEN` / `IMMERSIVE_COOKIE`,然后重启服务。
@@ -210,5 +175,3 @@ sudo usermod -aG docker $USER && newgrp docker   # 之后重新登录生效
 | `test_upstream.py` | 上游连通性测试:`uv run --with httpx --with python-dotenv test_upstream.py [model]` |
 | `probe_models.py` | 模型探测脚本,输出可用清单 |
 | `available_models.txt` | 探测得到的可用模型清单 |
-| `Dockerfile` / `docker-compose.yml` | 容器化部署(带 `restart` 保活 + healthcheck) |
-| `requirements.txt` | pip 依赖清单 |
