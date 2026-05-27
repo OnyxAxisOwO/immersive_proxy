@@ -155,28 +155,36 @@ print(resp.choices[0].message.content)
 
 VPS 上推荐用 Docker,自带 `restart: unless-stopped` 实现开机自启 + 崩溃自动重启。
 
-1. 准备好填了凭证的 `.env`(放在项目根目录,compose 会通过 `env_file` 注入容器)。
+**前置**:当前用户需有 docker 权限。要么命令前加 `sudo`,要么把用户加入 docker 组(免 sudo):
+
+```bash
+sudo usermod -aG docker $USER && newgrp docker   # 之后重新登录生效
+```
+
+1. 准备好填了凭证的 `.env`(放在项目根目录)。compose 会把它**只读挂载**进容器,由容器内 `python-dotenv` 读取。
+   - 不用 compose 的 `env_file`——它会把 Cookie 里的 `$xxx`(如 GA cookie `...$o6$g1...`)当变量展开而破坏 Cookie;挂载方式不受影响。
    - 对外访问无需改 `.env` 的 `HOST`——compose 已强制容器内监听 `0.0.0.0`;
    - 务必设置 `PROXY_API_KEY` 做鉴权。
+   - 宿主机端口在 `docker-compose.yml` 的 `ports` 左侧改(默认 `8000`)。
 
 2. 一键启动:
 
    ```bash
-   docker compose up -d --build
+   sudo docker compose up -d --build
    ```
 
 3. 常用运维:
 
    ```bash
-   docker compose logs -f          # 实时日志
-   docker compose restart          # 改了 .env 后重启生效
-   docker compose down             # 停止并移除容器
-   docker compose ps               # 状态
+   sudo docker compose logs -f       # 实时日志
+   sudo docker compose restart       # 改了 .env 后重启生效
+   sudo docker compose down          # 停止并移除容器
+   sudo docker compose ps            # 状态
    ```
 
 **保活机制**:compose 里设了 `restart: unless-stopped`,容器崩溃或宿主机重启都会自动拉起(除非你手动 `down`/`stop`);并带 healthcheck 探活 `/health`。
 
-> 宿主机端口由 `.env` 的 `PORT` 决定(默认 8000)。凭证失效仍需手动换 `.env` 后 `docker compose restart`。
+> 凭证失效仍需手动换 `.env` 后 `docker compose restart`。
 
 ## 凭证失效与更换
 

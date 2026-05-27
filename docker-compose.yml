@@ -5,13 +5,17 @@ services:
     container_name: immersive-proxy
     # 保活:崩溃 / 宿主机重启自动拉起(手动 down/stop 除外)
     restart: unless-stopped
-    # 把 .env 注入容器(凭证、模型清单、并发等)
-    env_file:
-      - .env
-    # 覆盖 .env 中的监听设置:容器内必须监听 0.0.0.0:8000
+
+    # 关键:直接挂载 .env 进容器,由容器内 python-dotenv 读取。
+    # 不用 env_file —— compose 的 env_file 会把 Cookie 里的 $xxx 当变量展开,破坏 Cookie。
+    volumes:
+      - ./.env:/app/.env:ro
+
+    # 覆盖监听地址:容器内必须监听 0.0.0.0:8000(环境变量优先级高于 .env)
     environment:
       HOST: "0.0.0.0"
       PORT: "8000"
-    # 宿主机端口取 .env 的 PORT(默认 8000)-> 容器 8000
+
+    # 宿主机端口:左边按需改(如 8965),右边固定容器内 8000
     ports:
-      - "${PORT:-8000}:8000"
+      - "8000:8000"
